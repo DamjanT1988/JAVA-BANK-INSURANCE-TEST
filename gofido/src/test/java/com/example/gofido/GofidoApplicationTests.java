@@ -1,4 +1,4 @@
-package com.example.gofido.gofido;
+package com.example.gofido;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
