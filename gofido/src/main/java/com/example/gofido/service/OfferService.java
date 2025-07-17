@@ -1,4 +1,4 @@
-package main.java.com.example.gofido.service;
+package com.example.gofido.service;
 
 import com.example.gofido.domain.Loan;
 import com.example.gofido.domain.Offer;

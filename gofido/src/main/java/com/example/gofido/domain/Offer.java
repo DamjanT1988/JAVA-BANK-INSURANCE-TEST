@@ -1,4 +1,4 @@
-package main.java.com.example.gofido.domain;
+package com.example.gofido.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;

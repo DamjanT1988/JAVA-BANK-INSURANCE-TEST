@@ -1,11 +1,14 @@
-package main.java.com.example.gofido.controller;
+package com.example.gofido.controller;
 
 import com.example.gofido.dto.CreateOfferDto;
+import com.example.gofido.dto.LoanDto;
 import com.example.gofido.dto.OfferResponseDto;
 import com.example.gofido.service.OfferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/offer")
@@ -16,7 +19,6 @@ public class OfferController {
     @PostMapping
     public ResponseEntity<OfferResponseDto> create(@RequestBody CreateOfferDto dto) {
         var o = svc.createOffer(dto);
-        // mappa Offer → OfferResponseDto
         return ResponseEntity.ok(toDto(o));
     }
 
@@ -26,14 +28,12 @@ public class OfferController {
         return ResponseEntity.ok(toDto(o));
     }
 
-    // TODO: PUT /offer/{id}, GET /stats/conversion
-
     private OfferResponseDto toDto(com.example.gofido.domain.Offer o) {
         return new OfferResponseDto(
             o.getId(),
             o.getPersonnummer(),
             o.getLoans().stream()
-                .map(l -> new com.example.gofido.dto.LoanDto(l.getBank(), l.getBelopp()))
+                .map(l -> new LoanDto(l.getBank(), l.getBelopp()))
                 .collect(Collectors.toList()),
             o.getManadskostnad(),
             o.getForsakratBelopp(),

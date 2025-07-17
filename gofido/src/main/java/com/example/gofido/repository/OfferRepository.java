@@ -1,4 +1,4 @@
-package main.java.com.example.gofido.repository;
+package com.example.gofido.repository;
 
 import com.example.gofido.domain.Offer;
 import com.example.gofido.domain.OfferStatus;

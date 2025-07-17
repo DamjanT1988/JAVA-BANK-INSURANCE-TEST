@@ -1,4 +1,4 @@
-package main.java.com.example.gofido.dto;
+package com.example.gofido.dto;
 
 import lombok.Data;
 
