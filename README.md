@@ -15,8 +15,6 @@
 - [Database](#database)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Overview
 GOFIDO is a Spring Boot application for managing mortgage payment protection insurance offers. It supports full CRUD operations for offers, automatic premium calculations, conversion statistics, and GDPR‑compliant data handling.
