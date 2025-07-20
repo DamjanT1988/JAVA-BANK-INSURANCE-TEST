@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * including premium calculations, validity checks, and exception handling.
  */
 @Service
-@RequiredArgsConstructor  // Constructor injection of repository
+@RequiredArgsConstructor // Constructor injection of repository
 public class OfferService {
 
     /**
@@ -35,7 +35,8 @@ public class OfferService {
     private final OfferRepository repo;
 
     /**
-     * Validity period in days for newly created offers, injected from configuration.
+     * Validity period in days for newly created offers, injected from
+     * configuration.
      */
     @Value("${offer.valid-days}")
     private int validDays;
@@ -79,30 +80,6 @@ public class OfferService {
     }
 
     /**
-     * Accept an existing offer, marking it as TECKNAD if still valid.
-     * <p>
-     * Throws exceptions if the offer does not exist or is expired.
-     *
-     * @param id the unique identifier of the offer to accept
-     * @return the updated Offer entity
-     * @throws OfferNotFoundException    if no offer found for the given ID
-     * @throws OfferExpiredException     if the offer has already expired
-     */
-    public Offer acceptOffer(String id) {
-        // Retrieve offer or throw if not found
-        Offer o = repo.findById(id)
-                .orElseThrow(() -> new OfferNotFoundException(id));
-        // Prevent accepting expired offers
-        if (LocalDateTime.now().isAfter(o.getGiltigTill())) {
-            throw new OfferExpiredException(id);
-        }
-        // Update status and timestamp for acceptance
-        o.setStatus(OfferStatus.TECKNAD);
-        o.setAccepteradVid(LocalDateTime.now());
-        return repo.save(o);
-    }
-
-    /**
      * Update an existing offer’s details.
      * <p>
      * Validates status and expiry before applying changes.
@@ -111,9 +88,9 @@ public class OfferService {
      * @param id  the unique identifier of the offer to update
      * @param dto the update-offer DTO with new loan list and monthly cost
      * @return the updated Offer entity
-     * @throws OfferNotFoundException         if the offer does not exist
-     * @throws OfferAlreadyAcceptedException  if the offer has already been accepted
-     * @throws OfferExpiredException          if the offer has expired
+     * @throws OfferNotFoundException        if the offer does not exist
+     * @throws OfferAlreadyAcceptedException if the offer has already been accepted
+     * @throws OfferExpiredException         if the offer has expired
      */
     public Offer updateOffer(String id, UpdateOfferDto dto) {
         // Load existing offer or throw if missing
@@ -148,4 +125,29 @@ public class OfferService {
         // Persist the updated offer
         return repo.save(o);
     }
+
+    /**
+     * Accept an existing offer, marking it as TECKNAD if still valid.
+     * <p>
+     * Throws exceptions if the offer does not exist or is expired.
+     *
+     * @param id the unique identifier of the offer to accept
+     * @return the updated Offer entity
+     * @throws OfferNotFoundException if no offer found for the given ID
+     * @throws OfferExpiredException  if the offer has already expired
+     */
+    public Offer acceptOffer(String id) {
+        // Retrieve offer or throw if not found
+        Offer o = repo.findById(id)
+                .orElseThrow(() -> new OfferNotFoundException(id));
+        // Prevent accepting expired offers
+        if (LocalDateTime.now().isAfter(o.getGiltigTill())) {
+            throw new OfferExpiredException(id);
+        }
+        // Update status and timestamp for acceptance
+        o.setStatus(OfferStatus.TECKNAD);
+        o.setAccepteradVid(LocalDateTime.now());
+        return repo.save(o);
+    }
+
 }
