@@ -1,3 +1,9 @@
+/**
+ * Unit tests for {@link com.example.gofido.service.OfferService}.
+ * <p>
+ * Verifies core business logic including offer creation, premium calculation,
+ * acceptance rules, and update behavior using Mockito for repository mocking.
+ */
 package com.example.gofido.service;
 
 import com.example.gofido.dto.CreateOfferDto;
@@ -12,10 +18,10 @@ import com.example.gofido.repository.OfferRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,20 +35,34 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OfferServiceTest {
 
+    /**
+     * Mocked repository to simulate database operations.
+     */
     @Mock
     private OfferRepository repo;
 
+    /**
+     * Service under test with injected mocks.
+     */
     @InjectMocks
     private OfferService service;
 
+    /**
+     * Configure the validity period before each test via reflection.
+     */
     @BeforeEach
     void setUp() {
-        // Sätter giltighetsperioden till 30 dagar i testerna
+        // Set offer validity to 30 days for deterministic testing
         ReflectionTestUtils.setField(service, "validDays", 30);
     }
 
+    /**
+     * Test that creating an offer correctly calculates the total insured amount,
+     * premium, and sets appropriate timestamps and status.
+     */
     @Test
     void calculatesPremiumAndValidityOnCreate() {
+        // Arrange: build a DTO with two loans totaling 2,000,000 SEK
         CreateOfferDto dto = new CreateOfferDto();
         dto.setPersonnummer("19800101-1234");
         dto.setManadskostnad(BigDecimal.valueOf(9500));
@@ -51,40 +71,62 @@ class OfferServiceTest {
             new LoanDto("SEB", BigDecimal.valueOf(800_000))
         ));
 
-        // Mocka save så att den returnerar samma objekt som skickas in
+        // Mock save to return the same Offer instance provided
         when(repo.save(any(Offer.class))).thenAnswer(inv -> inv.getArgument(0));
 
+        // Act: create the offer
         Offer result = service.createOffer(dto);
 
+        // Assert: verify total and premium calculations
         BigDecimal expectedTotal = BigDecimal.valueOf(2_000_000);
-        assertEquals(expectedTotal, result.getForsakratBelopp(), "Försäkrat belopp ska vara summa av lån");
-        assertEquals(expectedTotal.multiply(BigDecimal.valueOf(0.038)), result.getPremie(), "Premien ska vara 3.8%");
-        assertEquals(OfferStatus.SKAPAD, result.getStatus(), "Status ska vara SKAPAD");
-        assertNotNull(result.getSkapad(), "Skapad-tid ska vara satt");
-        assertNotNull(result.getGiltigTill(), "GiltigTill-tid ska vara satt");
-        assertTrue(result.getGiltigTill().isAfter(result.getSkapad()), "GiltigTill ska vara efter Skapad");
+        assertEquals(expectedTotal, result.getForsakratBelopp(),
+            "Insured amount should match sum of loan amounts");
+        assertEquals(expectedTotal.multiply(BigDecimal.valueOf(0.038)), result.getPremie(),
+            "Premium should be 3.8% of the insured amount");
+        assertEquals(OfferStatus.SKAPAD, result.getStatus(),
+            "Status should be SKAPAD after creation");
+        assertNotNull(result.getSkapad(), "Creation timestamp should be set");
+        assertNotNull(result.getGiltigTill(), "Expiry timestamp should be set");
+        assertTrue(result.getGiltigTill().isAfter(result.getSkapad()),
+            "Expiry should be after creation");
+
+        // Verify that the repository save method was invoked
         verify(repo).save(result);
     }
 
+    /**
+     * Test that accepting an offer before its expiry date succeeds,
+     * updating status and acceptance timestamp.
+     */
     @Test
     void acceptOfferBeforeExpirySucceeds() {
+        // Arrange: existing offer valid for one more day
         Offer existing = new Offer();
         existing.setId("test-id");
         existing.setStatus(OfferStatus.SKAPAD);
         existing.setGiltigTill(LocalDateTime.now().plusDays(1));
 
+        // Mock repository lookup and save
         when(repo.findById("test-id")).thenReturn(Optional.of(existing));
         when(repo.save(any(Offer.class))).thenAnswer(inv -> inv.getArgument(0));
 
+        // Act: accept the offer
         Offer accepted = service.acceptOffer("test-id");
 
-        assertEquals(OfferStatus.TECKNAD, accepted.getStatus(), "Status ska bli TECKNAD");
-        assertNotNull(accepted.getAccepteradVid(), "AccepteradVid ska vara satt");
+        // Assert: status change and timestamp set
+        assertEquals(OfferStatus.TECKNAD, accepted.getStatus(),
+            "Status should change to TECKNAD on accept");
+        assertNotNull(accepted.getAccepteradVid(),
+            "Acceptance timestamp should be populated");
         verify(repo).save(accepted);
     }
 
+    /**
+     * Ensure that accepting an expired offer throws {@link OfferExpiredException}.
+     */
     @Test
     void acceptOfferAfterExpiryThrowsException() {
+        // Arrange: offer expired yesterday
         Offer existing = new Offer();
         existing.setId("expired-id");
         existing.setStatus(OfferStatus.SKAPAD);
@@ -92,21 +134,33 @@ class OfferServiceTest {
 
         when(repo.findById("expired-id")).thenReturn(Optional.of(existing));
 
+        // Act & Assert: exception is thrown
         assertThrows(OfferExpiredException.class,
                      () -> service.acceptOffer("expired-id"),
-                     "OfferExpiredException ska kastas om offerten är utgången");
+                     "Expired offers should throw OfferExpiredException");
     }
 
+    /**
+     * Ensure that accepting a non-existent offer throws {@link OfferNotFoundException}.
+     */
     @Test
     void acceptOfferNotFoundThrowsException() {
+        // Arrange: no offer found in repo
         when(repo.findById("unknown")).thenReturn(Optional.empty());
+
+        // Act & Assert: not found exception
         assertThrows(OfferNotFoundException.class,
                      () -> service.acceptOffer("unknown"),
-                     "OfferNotFoundException ska kastas om offerten inte finns");
+                     "Non-existent offers should throw OfferNotFoundException");
     }
 
+    /**
+     * Test that updating an offer recalculates insured amount and premium,
+     * and updates the personnummer correctly while preserving SKAPAD status.
+     */
     @Test
     void updateOfferRecalculatesFields() {
+        // Arrange: existing offer still valid
         Offer existing = new Offer();
         existing.setId("update-id");
         existing.setStatus(OfferStatus.SKAPAD);
@@ -116,6 +170,7 @@ class OfferServiceTest {
         when(repo.findById("update-id")).thenReturn(Optional.of(existing));
         when(repo.save(any(Offer.class))).thenAnswer(inv -> inv.getArgument(0));
 
+        // New DTO with updated loan and personnummer
         UpdateOfferDto dto = new UpdateOfferDto();
         dto.setPersonnummer("new-ssn");
         dto.setManadskostnad(BigDecimal.valueOf(12000));
@@ -123,19 +178,28 @@ class OfferServiceTest {
             new LoanDto("SBAB", BigDecimal.valueOf(1_000_000))
         ));
 
+        // Act: perform update
         Offer updated = service.updateOffer("update-id", dto);
 
-        assertEquals("new-ssn", updated.getPersonnummer(), "Personnummer ska uppdateras");
-        assertEquals(BigDecimal.valueOf(1_000_000), updated.getForsakratBelopp(), "Försäkrat belopp ska uppdateras");
+        // Assert: verify recalculated fields
+        assertEquals("new-ssn", updated.getPersonnummer(),
+            "Personnummer should be updated");
+        assertEquals(BigDecimal.valueOf(1_000_000), updated.getForsakratBelopp(),
+            "Insured amount should match updated loan amount");
         assertEquals(BigDecimal.valueOf(1_000_000).multiply(BigDecimal.valueOf(0.038)),
                      updated.getPremie(),
-                     "Premien ska omräknas korrekt");
-        assertEquals(OfferStatus.SKAPAD, updated.getStatus(), "Status ska fortfarande vara SKAPAD");
+                     "Premium should be recalculated correctly");
+        assertEquals(OfferStatus.SKAPAD, updated.getStatus(),
+            "Status should remain SKAPAD after update");
         verify(repo).save(updated);
     }
 
+    /**
+     * Verify that updating an offer already in TECKNAD status throws {@link OfferAlreadyAcceptedException}.
+     */
     @Test
     void updateOfferAlreadyAcceptedThrowsException() {
+        // Arrange: offer already accepted
         Offer existing = new Offer();
         existing.setId("accepted-id");
         existing.setStatus(OfferStatus.TECKNAD);
@@ -143,13 +207,18 @@ class OfferServiceTest {
 
         when(repo.findById("accepted-id")).thenReturn(Optional.of(existing));
 
+        // Act & Assert: expected exception
         assertThrows(OfferAlreadyAcceptedException.class,
                      () -> service.updateOffer("accepted-id", new UpdateOfferDto()),
-                     "OfferAlreadyAcceptedException ska kastas om offerten redan är accepterad");
+                     "Accepted offers should throw OfferAlreadyAcceptedException on update");
     }
 
+    /**
+     * Verify that updating an expired offer throws {@link OfferExpiredException}.
+     */
     @Test
     void updateOfferAfterExpiryThrowsException() {
+        // Arrange: offer expired yesterday
         Offer existing = new Offer();
         existing.setId("expired-update");
         existing.setStatus(OfferStatus.SKAPAD);
@@ -157,8 +226,9 @@ class OfferServiceTest {
 
         when(repo.findById("expired-update")).thenReturn(Optional.of(existing));
 
+        // Act & Assert: expected exception
         assertThrows(OfferExpiredException.class,
                      () -> service.updateOffer("expired-update", new UpdateOfferDto()),
-                     "OfferExpiredException ska kastas om offerten är utgången vid uppdatering");
+                     "Expired offers should throw OfferExpiredException on update");
     }
 }
