@@ -112,6 +112,46 @@ offer.valid-days=30
 mvn test
 ```
 
+### Unit Tests
+
+We use JUnit 5 and Mockito to verify core business logic in `OfferService`. Key test cases include:
+
+- **`calculatesPremiumAndValidityOnCreate`**  
+  Verifies that creating an offer:
+  - Sums the loan amounts correctly (e.g. 1 200 000 + 800 000 = 2 000 000)  
+  - Calculates the premium as 3.8% of the total (76 000)  
+  - Sets `status` to `SKAPAD` and populates `skapad` and `giltigTill` with a 30-day validity window  
+
+- **`acceptOfferBeforeExpirySucceeds`**  
+  Confirms that accepting an offer before its expiry date:
+  - Changes `status` to `TECKNAD`  
+  - Sets `accepteradVid` timestamp  
+  - Persists the updated entity  
+
+- **`acceptOfferAfterExpiryThrowsException`**  
+  Ensures that attempting to accept an expired offer throws `OfferExpiredException`.
+
+- **`acceptOfferNotFoundThrowsException`**  
+  Ensures that accepting a non-existent offer throws `OfferNotFoundException`.
+
+- **`updateOfferRecalculatesFields`**  
+  Tests that updating an offer:
+  - Recalculates `forsakratBelopp` and `premie` based on new loan data  
+  - Updates the `personnummer` field  
+  - Maintains `status = SKAPAD`  
+
+- **`updateOfferAlreadyAcceptedThrowsException`**  
+  Verifies that updating an offer with status `TECKNAD` throws `OfferAlreadyAcceptedException`.
+
+- **`updateOfferAfterExpiryThrowsException`**  
+  Verifies that updating an expired offer throws `OfferExpiredException`.
+
+#### Running Unit Tests
+
+```bash
+mvn -Dtest=OfferServiceTest test
+
+
 ## Project Structure
 ```
 src/
