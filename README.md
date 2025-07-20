@@ -111,7 +111,6 @@ offer.valid-days=30
 ```bash
 mvn test
 ```
-
 ### Unit Tests
 
 We use JUnit 5 and Mockito to verify core business logic in `OfferService`. Key test cases include:
@@ -150,7 +149,7 @@ We use JUnit 5 and Mockito to verify core business logic in `OfferService`. Key 
 
 ```bash
 mvn -Dtest=OfferServiceTest test
-
+```
 
 ## Project Structure
 ```
