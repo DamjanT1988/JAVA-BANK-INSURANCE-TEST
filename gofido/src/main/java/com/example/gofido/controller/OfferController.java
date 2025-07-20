@@ -3,6 +3,8 @@ package com.example.gofido.controller;
 import com.example.gofido.dto.CreateOfferDto;
 import com.example.gofido.dto.LoanDto;
 import com.example.gofido.dto.OfferResponseDto;
+import org.springframework.web.bind.annotation.PutMapping;
+import com.example.gofido.dto.UpdateOfferDto;
 import com.example.gofido.service.OfferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,14 @@ public class OfferController {
     @PostMapping
     public ResponseEntity<OfferResponseDto> create(@RequestBody CreateOfferDto dto) {
         var o = svc.createOffer(dto);
+        return ResponseEntity.ok(toDto(o));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<OfferResponseDto> update(
+            @PathVariable String id,
+            @RequestBody UpdateOfferDto dto) {
+        var o = svc.updateOffer(id, dto);
         return ResponseEntity.ok(toDto(o));
     }
 
